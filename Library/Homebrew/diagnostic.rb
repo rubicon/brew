@@ -426,10 +426,12 @@ module Homebrew
           end
         end
 
+        @user_path_1_done = true
         message unless message.empty?
       end
 
       def check_user_path_2
+        check_user_path_1 unless defined?(@user_path_1_done)
         return if @seen_prefix_bin
 
         <<~EOS
@@ -440,6 +442,7 @@ module Homebrew
       end
 
       def check_user_path_3
+        check_user_path_1 unless defined?(@user_path_1_done)
         return if @seen_prefix_sbin
 
         # Don't complain about sbin not being in the path if it doesn't exist
@@ -748,14 +751,12 @@ module Homebrew
 
       def check_for_unlinked_but_not_keg_only
         unlinked = Formula.racks.reject do |rack|
-          if (HOMEBREW_LINKED_KEGS/rack.basename).directory?
-            true
-          else
-            begin
-              Formulary.from_rack(rack).keg_only?
-            rescue FormulaUnavailableError, TapFormulaAmbiguityError
-              false
-            end
+          next true if (HOMEBREW_LINKED_KEGS/rack.basename).directory?
+
+          begin
+            Formulary.from_rack(rack).keg_only?
+          rescue FormulaUnavailableError, TapFormulaAmbiguityError
+            false
           end
         end.map(&:basename)
         return if unlinked.empty?
